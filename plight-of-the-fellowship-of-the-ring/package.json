@@ -1,0 +1,18 @@
+{
+  "name": "plight-of-the-fellowship-of-the-ring",
+  "version": "1.0.0",
+  "description": "",
+  "main": "index.js",
+  "scripts": {
+    "test": "mocha --require babel-core/register"
+  },
+  "author": "brioche869",
+  "license": "ISC",
+  "devDependencies": {
+    "babel-cli": "^6.26.0",
+    "babel-preset-env": "^1.6.1",
+    "chai": "^4.1.2",
+    "mocha": "^5.0.5",
+    "rimraf": "^2.6.2"
+  }
+}
