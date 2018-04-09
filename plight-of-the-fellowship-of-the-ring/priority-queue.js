@@ -25,6 +25,20 @@ export class PriorityQueue {
         this.siftUp(this.elements.length - 1);
     }
 
+    delete(element) {
+        const i = this.elements.indexOf(element);
+        if (i > -1) {
+            if (this.elements.length - 1 === i) {
+                this.elements.pop();
+            } else {
+                this.swap(i, this.elements.length - 1);
+                this.elements.pop();
+                this.siftUp(i);
+                this.siftDown(i);
+            }
+        }
+    }
+
     pop() {
         const answer = this.peek();
         const last = this.elements.pop();
@@ -58,10 +72,11 @@ export class PriorityQueue {
                 break;
             }
             const k = this.getRightChildIndex(i);
-            const l = isUndefinedOrNull(k)? j : this.smallerIndex(j, k);
+            const l = isUndefinedOrNull(k) ? j : this.smallerIndex(j, k);
 
             if (this.smallerIndex(l, i) === l) {
                 this.swap(l, i);
+                i = l;
             } else {
                 break;
             }
@@ -77,7 +92,7 @@ export class PriorityQueue {
 
     getLeftChildIndex(i) {
         const answer = (i * 2) + 1;
-        if (answer > this.elements.length) {
+        if (answer >= this.elements.length) {
             return undefined;
         }
         return answer;
@@ -85,10 +100,10 @@ export class PriorityQueue {
 
     getRightChildIndex(i) {
         const answer = (i * 2) + 2;
-        if (answer > this.elements.length) {
+        if (answer >= this.elements.length) {
             return undefined;
         }
-        return answer;        
+        return answer;
     }
 
     swap(i, j) {

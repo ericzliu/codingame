@@ -52,6 +52,63 @@ describe('PriorityQueue', function () {
         assert.equal(pq.pop(), 3);
         assert.deepEqual(pq.elements, [4]);
         assert.equal(pq.pop(), 4);
-        assert.isTrue(pq.empty());        
+        assert.isTrue(pq.empty());
     });
+
+    it('delete should work', function () {
+        let pq = new PriorityQueue(comparator);
+        pq.insert(1);
+        pq.insert(2);
+        pq.insert(3);
+        pq.insert(4);
+        assert.deepEqual(pq.elements, [1, 2, 3, 4]);
+        pq.delete(4);
+        assert.deepEqual(pq.elements, [1, 2, 3]);
+        pq.insert(4);
+        pq.delete(2);
+        assert.deepEqual(pq.elements, [1, 4, 3]);
+    })
+
+    it('delete with sift down should work', function () {
+        let pq = new PriorityQueue(comparator);
+        pq.insert(1);
+        pq.insert(2);
+        pq.insert(3);
+        pq.insert(4);
+        pq.insert(5);
+        pq.insert(6);
+        pq.insert(7);
+        pq.delete(3);
+        assert.deepEqual(pq.elements, [1, 2, 6, 4, 5, 7]);
+
+        pq = new PriorityQueue(comparator);
+        pq.insert(1);
+        pq.insert(2);
+        pq.insert(3);
+        pq.insert(4);
+        pq.insert(5);
+        pq.insert(6);
+        pq.insert(7);
+        pq.delete(2);
+        assert.deepEqual(pq.elements, [1, 4, 3, 7, 5, 6]);
+    })
+
+    it('delete with sift up should work', function () {
+        let pq = new PriorityQueue(comparator);
+        pq.insert(1);
+        pq.insert(6);
+        pq.insert(2);
+        pq.insert(7);
+        pq.insert(8);
+        pq.insert(3);
+        pq.delete(7);
+        assert.deepEqual(pq.elements, [1, 3, 2, 6, 8]);
+    })
+
+    it('delete only element from priority queue should work', function() {
+        let pq = new PriorityQueue(comparator);
+        pq.insert(1);
+        pq.delete(1);
+        assert.deepEqual(pq.elements, []);
+    })
 });
