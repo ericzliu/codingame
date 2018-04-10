@@ -39,9 +39,9 @@ export class DijkstraExt {
         this.fnIsNodeReachable = fnIsNodeReachable;
     }
 
-    compareNode(u, v) {
-        const distU = this.getDistance(u);
-        const distV = this.getDistance(v);
+    compareNode(nodeU, nodeV) {
+        const [u, distU] = nodeU;
+        const [v, distV] = nodeV;
         if (distU < distV) {
             return -1;
         } else if (distU > distV) {
@@ -55,11 +55,11 @@ export class DijkstraExt {
         const comparator = this.compareNode.bind(this);
         const pq = new PriorityQueue(comparator);
         for (let i = 0; i < this.graph.getNumNode(); i++) {
-            pq.insert(i);
+            pq.insert([i, i === this.S? 0 : Number.POSITIVE_INFINITY]);
         }
         const visited = new Set();
         while (!pq.empty() && !visited.has(this.T)) {
-            const node = pq.pop();
+            const [node, distance] = pq.pop();
             if (visited.has(node)) {
                 continue;
             } else {
@@ -73,8 +73,7 @@ export class DijkstraExt {
                     if (this.fnIsNodeReachable(this.X[nextNode], this.Y[nextNode], newDistance)) {
                         this.distance[nextNode] = newDistance;
                         this.prev[nextNode] = node;
-                        pq.delete(nextNode);
-                        pq.insert(nextNode);
+                        pq.insert([nextNode, newDistance]);
                     }
                 }
             }
