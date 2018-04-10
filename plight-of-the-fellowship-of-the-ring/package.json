@@ -5,7 +5,8 @@
   "main": "index.js",
   "scripts": {
     "test": "mocha --require babel-core/register",
-    "test-debug": "mocha --require babel-core/register --inspect-brk"    
+    "test-debug": "mocha --require babel-core/register --inspect-brk",
+    "gulp": "gulp"
   },
   "author": "brioche869",
   "license": "ISC",
@@ -13,7 +14,10 @@
     "babel-cli": "^6.26.0",
     "babel-preset-env": "^1.6.1",
     "chai": "^4.1.2",
+    "gulp": "^3.9.1",
+    "gulp-concat": "^2.6.1",
     "mocha": "^5.0.5",
     "rimraf": "^2.6.2"
-  }
+  },
+  "dependencies": {}
 }
