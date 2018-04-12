@@ -35,3 +35,7 @@ export function getDistanceLowerBound(min_x, min_y, max_x, max_y, x, y) {
     }
     return 0;
 }
+
+export const MINUS_INFINITY = Number.NEGATIVE_INFINITY;
+
+export const PLUS_INFINITY = Number.POSITIVE_INFINITY;
