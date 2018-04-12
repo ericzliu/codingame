@@ -20,10 +20,14 @@ export class Point {
 }
 
 export class Node {
-    constructor(x, y, split_axis) {
+    constructor(x, y, split_axis, min_x, min_y, max_x, max_y) {
         this.x = x;
         this.y = y;
         this.split_axis = split_axis;
+        this.min_x = min_x;
+        this.min_y = min_y;
+        this.max_x = max_x;
+        this.max_y = max_y;
         this.left = undefined;
         this.right = undefined;
     }
@@ -33,6 +37,17 @@ export function swap(array, i, j) {
     const tmp = array[i];
     array[i] = array[j];
     array[j] = tmp;
+}
+
+export class Champion {
+    constructor(x, y, distance) {
+        this.x = x;
+        this.y = y;
+        this.distance = distance;
+        if (isUndefinedOrNull(this.distance)) {
+            this.distance = Number.POSITIVE_INFINITY;
+        }
+    }
 }
 
 export class KdTree {
@@ -86,22 +101,41 @@ export class KdTree {
      * insert points to a KdTree
      * @param {Point[]} points 
      */
-    insert(points, start, end, split_axis) {
+    insert(points, start, end, split_axis, min_x, min_y, max_x, max_y) {
         const length = end - start;
         if (isUndefinedOrNull(points) || length === 0) {
             return undefined;
         } else if (length === 1) {
             const p = points[start];
-            return new Node(p.x, p.y, split_axis);
+            return new Node(p.x, p.y, split_axis, min_x, min_y, max_x, max_y);
         } else {
             debugger;
             const p = this.select(points, start, end, split_axis);
             const m = this.split(points, start, end, p, split_axis);
-            const node = new Node(p.x, p.y, split_axis);
+            const node = new Node(p.x, p.y, split_axis, min_x, min_y, max_x, max_y);
             const new_axis = split_axis === axis_h ? axis_v : axis_h;
-            node.left = this.insert(points, start, m, new_axis);
-            node.right = this.insert(points, m + 1, end, new_axis);
+            let min_x1 = min_x;
+            let min_y1 = min_y;
+            let max_x1 = max_x;
+            let max_y1 = max_y;
+            let min_x2 = min_x;
+            let min_y2 = min_y;
+            let max_x2 = max_x;
+            let max_y2 = max_y;
+            if (split_axis === axis_h) {
+                max_x1 = p.x;
+                min_x2 = p.x;
+            } else {
+                max_y1 = p.y;
+                min_y2 = p.y;
+            }
+            node.left = this.insert(points, start, m, new_axis, min_x1, min_y1, max_x1, max_y1);
+            node.right = this.insert(points, m + 1, end, new_axis, min_x2, min_y2, max_x2, max_y2);
             return node;
         }
+    }
+
+    getNearestNeighbor(node, x, y, champion) {
+
     }
 }
