@@ -1,4 +1,4 @@
-import { isUndefinedOrNull } from './utility';
+import { isUndefinedOrNull, getEuclideanDistance, getDistanceLowerBound } from './utility';
 import { debug } from 'util';
 
 export const axis_h = Symbol('h');
@@ -109,7 +109,6 @@ export class KdTree {
             const p = points[start];
             return new Node(p.x, p.y, split_axis, min_x, min_y, max_x, max_y);
         } else {
-            debugger;
             const p = this.select(points, start, end, split_axis);
             const m = this.split(points, start, end, p, split_axis);
             const node = new Node(p.x, p.y, split_axis, min_x, min_y, max_x, max_y);
@@ -135,7 +134,48 @@ export class KdTree {
         }
     }
 
-    getNearestNeighbor(node, x, y, champion) {
+    getChildNodes(node, x, y) {
+        let child_nodes = [];        
+        let smaller = false;
+        if (node.split_axis === axis_h) {
+            if (x <= node.x) {
+                smaller = true;
+            }
+        } else {
+            if (y <= node.y) {
+                smaller = true;
+            }
+        }
+        if (smaller) {
+            child_nodes.push(node.left);
+            child_nodes.push(node.right);
+        } else {
+            child_nodes.push(node.right);
+            child_nodes.push(node.left);
+        }
+        child_nodes = child_nodes.filter(function (x) {
+            return !isUndefinedOrNull(x);
+        });
+        return child_nodes;
+    }
 
+    getNearestNeighbor(node, x, y, champion) {
+        if (isUndefinedOrNull(node)) {
+            return;
+        }
+        const dist = getEuclideanDistance(node.x, node.y, x, y);
+        if (dist < champion.distance) {
+            champion.distance = dist;
+            champion.x = node.x;
+            champion.y = node.y;
+        }
+        const child_nodes = this.getChildNodes(node, x, y);
+        for (let i = 0; i < child_nodes.length; i++) {
+            const child = child_nodes[i];
+            const dist_bound = getDistanceLowerBound(child.min_x, child.min_y, child.max_x, child.max_y, x, y);
+            if (dist_bound < champion.distance) {
+                this.getNearestNeighbor(child, x, y, champion);
+            }
+        }
     }
 }

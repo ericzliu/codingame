@@ -206,4 +206,55 @@ describe('2d KdTree', function () {
         assert.isUndefined(tree.right.left);
         assert.isUndefined(tree.right.right);
     });
+
+    it('Nearest neighbor test', function() {
+        const api = new KdTree();
+        const p0 = new Point(0, 0);
+        const p1 = new Point(-3, -3);
+        const p2 = new Point(3, 3);
+        const MINUS_INFINITY = Number.NEGATIVE_INFINITY;
+        const PLUS_INFINITY = Number.POSITIVE_INFINITY;
+        let tree = api.insert([p0, p1, p2], 0, 3, axis_h, MINUS_INFINITY, MINUS_INFINITY, PLUS_INFINITY, PLUS_INFINITY);
+        let champion = { x: undefined, y: undefined, distance: Number.POSITIVE_INFINITY };
+        api.getNearestNeighbor(tree, 0, 0, champion);
+        assert.deepEqual(champion, {x: 0, y: 0, distance: 0});
+
+        champion = { x: undefined, y: undefined, distance: Number.POSITIVE_INFINITY };
+        api.getNearestNeighbor(tree, -3, -3, champion);
+        assert.deepEqual(champion, {x: -3, y: -3, distance: 0});
+
+        champion = { x: undefined, y: undefined, distance: Number.POSITIVE_INFINITY };
+        api.getNearestNeighbor(tree, 3, 3, champion);
+        assert.deepEqual(champion, {x: 3, y: 3, distance: 0});
+    });
+
+    it('Nearest neighbor test (cont.)', function() {
+        const api = new KdTree();
+        const p0 = new Point(0, 0);
+        const p1 = new Point(-4, -4);
+        const p2 = new Point(1, -8);
+        const MINUS_INFINITY = Number.NEGATIVE_INFINITY;
+        const PLUS_INFINITY = Number.POSITIVE_INFINITY;
+        let tree = api.insert([p0, p1, p2], 0, 3, axis_h, MINUS_INFINITY, MINUS_INFINITY, PLUS_INFINITY, PLUS_INFINITY);
+        let champion = { x: undefined, y: undefined, distance: Number.POSITIVE_INFINITY };
+        api.getNearestNeighbor(tree, -1, -8, champion);
+        assert.deepEqual(champion, {x: 1, y: -8, distance: 2});
+    });
+
+    it('Nearest neighbor test (cont.)(cont.)', function() {
+        const api = new KdTree();
+        const p0 = new Point(0, 0);
+        const p1 = new Point(-4, -4);
+        const p2 = new Point(1, -8);
+        const p3 = new Point(-8, 0);
+        const p4 = new Point(-2, -8);
+        const p5 = new Point(4, -4);
+        const p6 = new Point(6, -10);
+        const MINUS_INFINITY = Number.NEGATIVE_INFINITY;
+        const PLUS_INFINITY = Number.POSITIVE_INFINITY;
+        let tree = api.insert([p0, p1, p2, p3, p4, p5, p6], 0, 7, axis_h, MINUS_INFINITY, MINUS_INFINITY, PLUS_INFINITY, PLUS_INFINITY);
+        let champion = { x: undefined, y: undefined, distance: Number.POSITIVE_INFINITY };
+        api.getNearestNeighbor(tree, -1, -8, champion);
+        assert.deepEqual(champion, {x: -2, y: -8, distance: 1});
+    });
 });
