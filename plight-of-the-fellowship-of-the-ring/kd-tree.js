@@ -1,4 +1,5 @@
 import { isUndefinedOrNull } from './utility';
+import { debug } from 'util';
 
 export const axis_h = Symbol('h');
 export const axis_v = Symbol('v');
@@ -86,17 +87,19 @@ export class KdTree {
      * @param {Point[]} points 
      */
     insert(points, start, end, split_axis) {
-        if (isUndefinedOrNull(points) || points.length === 0) {
+        const length = end - start;
+        if (isUndefinedOrNull(points) || length === 0) {
             return undefined;
-        } else if (points.length === 1) {
-            const p = points[0];
+        } else if (length === 1) {
+            const p = points[start];
             return new Node(p.x, p.y, split_axis);
         } else {
+            debugger;
             const p = this.select(points, start, end, split_axis);
             const m = this.split(points, start, end, p, split_axis);
             const node = new Node(p.x, p.y, split_axis);
             const new_axis = split_axis === axis_h ? axis_v : axis_h;
-            node.left = this.insert(points, 0, m, new_axis);
+            node.left = this.insert(points, start, m, new_axis);
             node.right = this.insert(points, m + 1, end, new_axis);
             return node;
         }
