@@ -12,7 +12,7 @@ export function findPath(spots_x, spots_y, orcs_x, orcs_y, portals_u, portals_v,
     engine.apply();
     const dist = engine.getDistance(E);
     if (dist === PLUS_INFINITY) {
-        return undefined;
+        return 'IMPOSSIBLE';
     }
     return engine.getPath();
 }

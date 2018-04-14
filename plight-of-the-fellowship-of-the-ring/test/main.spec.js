@@ -2,7 +2,7 @@ import { findPath } from '../main';
 import { assert } from 'chai';
 
 describe('main', function() {
-    it.only('exemple should work', function() {
+    it('exemple should work', function() {
         const spot_x = [1, 2, 2, 3];
         const spot_y = [1, 0, 2, 1];
         const orcs_x = [1];
