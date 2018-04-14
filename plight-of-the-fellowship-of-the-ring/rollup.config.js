@@ -7,7 +7,7 @@ import uglify from 'rollup-plugin-uglify';
 const production = !process.env.ROLLUP_WATCH;
 
 export default {
-	input: 'kd-tree.js',
+	input: 'main.js',
 	output: {
         name: 'bundle',
 		file: 'bundle.js',

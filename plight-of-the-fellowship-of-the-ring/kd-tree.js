@@ -1,5 +1,4 @@
 import { isUndefinedOrNull, getEuclideanDistance, getDistanceLowerBound } from './utility';
-import { debug } from 'util';
 
 export const axis_h = Symbol('h');
 export const axis_v = Symbol('v');
