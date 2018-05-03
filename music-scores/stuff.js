@@ -3,12 +3,20 @@ const BLACK = 1;
 const WHITE = 0;
 
 function getBlackSegments(column) {
+    return getSegments(column, BLACK);
+}
+
+function getWhiteSegments(column) {
+    return getSegments(column, WHITE);
+}
+
+function getSegments(column, color) {
     const segments = [];
     let inSegment = false;
     let begin = -1;
     let end = -1;
     for (let i = 0; i < column.length; i++) {
-        if (column[i] === BLACK) {
+        if (column[i] === color) {
             if (!inSegment) {
                 inSegment = true;
                 begin = i;
@@ -227,6 +235,142 @@ class BWImage {
             }
         }
         return { isRect: true, minW: minW, minH: minH, maxW: maxW, maxH: maxH };
+    }
+
+    getRegions(segments) {
+        const regions = new Array(6);
+        regions[0] = { begin: 0, end: segments[0].begin };
+        regions[1] = { begin: segments[0].end, end: segments[1].begin };
+        regions[2] = { begin: segments[1].end, end: segments[2].begin };
+        regions[3] = { begin: segments[2].end, end: segments[3].begin };
+        regions[4] = { begin: segments[3].end, end: segments[4].begin };
+        regions[5] = { begin: segments[4].end, end: this.height };
+        return regions;
+    }
+
+    // Assuming the current image only contains one music score
+    // Find the regions that contains things other than the score tail
+    // The region tells which place the score occupies, and we can deduce the score
+    tellNote(segments) {
+        const numBlack = this.countBlack(segments);
+        if (numBlack.length != 6) {
+            throw new Error('Format error: only five lines and six region');
+        }
+        const regionId = [];
+        const regions = this.getRegions(segments);
+        for (let i = 0; i < 6; i += 1) {
+            if (numBlack[i] > 0) {
+                if (!this.isBlackRegionRect(regions[i].begin, regions[i].end).isRect) {
+                    regionId.push(i);
+                }
+            }
+        }
+        var score;
+        if (regionId.length === 1) {
+            switch (regionId[0]) {
+            case 0:
+                score = 'G';
+                break;
+            case 1:
+                score = 'E';
+                break;
+            case 2:
+                score = 'C';
+                break;
+            case 3:
+                score = 'A';
+                break;
+            case 4:
+                score = 'F';
+                break;
+            case 5:
+                if (this.isLowerC(segments)) {
+                    score = 'C';
+                }
+                else {
+                    score = 'D';
+                }
+                break;
+            }
+        }
+        else if (regionId.length === 2) {
+            if (regionId[0] === 0 && regionId[1] === 1) {
+                score = 'F';
+            } else if (regionId[0] === 1 && regionId[1] === 2) {
+                score = 'D';
+            } else if (regionId[0] === 2 && regionId[1] === 3) {
+                score = 'B';
+            } else if (regionId[0] === 3 && regionId[1] === 4) {
+                score = 'G';
+            } else if (regionId[0] === 4 && regionId[1] === 5) {
+                score = 'E';
+            }
+        }
+        else {
+            throw new Error('Unable to recognise note');
+        }
+        return score;
+    }
+
+    // Assume the image only contains the score columns
+    // The distance between the lowest line and the top of the score
+    // If zero, then is a D, else is a lower C
+    isLowerC(segments) {
+        const regions = this.getRegions(segments);
+        let dist = Number.MAX_SAFE_INTEGER;
+        for (let w = 0; w < (this.width / 2); w += 1) {
+            for (let h = regions[5].begin; h < regions[5].end; h += 1) {
+                if (this.getPixel(w, h) === BLACK) {
+                    const local = h - regions[5].begin;
+                    if (local < dist) {
+                        dist = local;
+                    }
+                    break;
+                }
+            }
+        }
+        return (dist > 0);
+    }
+
+    // Assume image only contains the music note columns
+    // Check column by column, if there is a white segment that doesn't start from a line and not end with a line
+    // Then this is a half note
+    isHalf(segments) {
+        for (let w = 0; w < this.width; w += 1) {
+            const data = this.getColumn(w);
+            const whiteSegments = getWhiteSegments(data);
+            for (let whiteSegment of whiteSegments) {
+                const { begin, end } = whiteSegment;
+                let next = false;
+                if (begin === 0 || end == this.height) {
+                    next = true;
+                }
+                if (!next) {
+                    for (let segment of segments) {
+                        if (begin === segment.end) {
+                            next = true;
+                            break;
+                        }
+                    }
+                }
+                if (!next) {
+                    for (let segment of segments) {
+                        if (end === segment.begin) {
+                            next = true;
+                            break;
+                        }
+                    }
+
+                    if (end === (segments[4].end + segments[2].begin - segments[1].end)) {
+                        next = true;
+                    }
+                }
+                if (!next) {
+                    return true;
+                }
+            }
+        }
+        return false;
     }
 }
 

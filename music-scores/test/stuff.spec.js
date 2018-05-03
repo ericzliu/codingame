@@ -191,4 +191,119 @@ describe('Stuff test', function () {
             assert.isTrue(fhImg.isBlackRegionRect(segments[1].end, segments[2].begin).isRect);
         });
     });
+
+    it('Can tell A', function () {
+        return readFile('./testcase/one-half-note-between-lines.txt').then(function (bw) {
+            const { space, width, segments } = bw.readStd();
+            const notes = bw.getNotes(space, width);
+            //AH
+            const AH = notes[0];
+            const ahImg = bw.getNote(AH.begin, AH.end);
+            const note = ahImg.tellNote(segments);
+            assert.equal(note, 'A');
+        });
+    });
+
+    it('Can tell B', function () {
+        return readFile('./testcase/one-quarter-note-on-a-line.txt').then(function (bw) {
+            const { space, width, segments } = bw.readStd();
+            const notes = bw.getNotes(space, width);
+            //BQ
+            const BQ = notes[0];
+            const bqImg = bw.getNote(BQ.begin, BQ.end);
+            const note = bqImg.tellNote(segments);
+            assert.equal(note, 'B');
+        });
+    });    
+    
+    it('Can distinguish lower C and D', function () {
+        return readFile('./testcase/lower-c.txt').then(function (bw) {
+            const { space, width, segments } = bw.readStd();
+            const notes = bw.getNotes(space, width);
+            //CQ
+            const CQ = notes[0];
+            const cqImg = bw.getNote(CQ.begin, CQ.end);
+            const note = cqImg.tellNote(segments);
+            assert.equal(note, 'C');
+            //DQ
+            const DQ = notes[3];
+            const dqImg = bw.getNote(DQ.begin, DQ.end);
+            const score = dqImg.tellNote(segments);
+            assert.equal(score, 'D');
+        });
+    });
+
+    it('Can detect half', function() {
+        return readFile('./testcase/lower-c.txt').then(function (bw) {
+            const { space, width, segments } = bw.readStd();
+            const notes = bw.getNotes(space, width);
+            let CH = notes[10];
+            const chImg = bw.getNote(CH.begin, CH.end);
+            assert.isTrue(chImg.isHalf(segments));
+
+            let DQ = notes[9];
+            const dqImg = bw.getNote(DQ.begin, DQ.end);
+            assert.isFalse(dqImg.isHalf(segments));
+        });
+    });
+
+    it('Can detect music from lower-c.txt', function() {
+        return readFile('./testcase/lower-c.txt').then(function (bw) {
+            const { space, width, segments } = bw.readStd();
+            const notes = bw.getNotes(space, width);
+            const scores = [];
+            for (let note of notes) {
+                const img = bw.getNote(note.begin, note.end);
+                const score = img.tellNote(segments);
+                const isHalf = img.isHalf(segments);
+                scores.push(score + (isHalf ? 'H' : 'Q'));
+            }
+            assert.deepEqual(scores, ['CQ', 'CQ', 'CQ', 'DQ', 'EH', 'DH', 'CQ', 'EQ', 'DQ', 'DQ', 'CH']);
+        });
+    });
+
+    it('Can detect music from very-close.txt', function() {
+        return readFile('./testcase/very-close.txt').then(function (bw) {
+            const { space, width, segments } = bw.readStd();
+            const notes = bw.getNotes(space, width);
+            const scores = [];
+            for (let note of notes) {
+                const img = bw.getNote(note.begin, note.end);
+                const score = img.tellNote(segments);
+                const isHalf = img.isHalf(segments);
+                scores.push(score + (isHalf ? 'H' : 'Q'));
+            }
+            assert.deepEqual(scores, ['BQ', 'CH', 'DH', 'EH', 'FQ', 'GQ', 'GQ', 'BQ', 'DH', 'BQ']);
+        });
+    });
+
+    it('Can detect music from only-1-pixel-wide.txt', function() {
+        return readFile('./testcase/only-1-pixel-wide.txt').then(function (bw) {
+            const { space, width, segments } = bw.readStd();
+            const notes = bw.getNotes(space, width);
+            const scores = [];
+            for (let note of notes) {
+                const img = bw.getNote(note.begin, note.end);
+                const score = img.tellNote(segments);
+                const isHalf = img.isHalf(segments);
+                scores.push(score + (isHalf ? 'H' : 'Q'));
+            }
+            assert.deepEqual(scores, ['BQ', 'CH', 'DH', 'EH', 'FQ', 'GQ', 'GQ', 'BQ', 'DH', 'BQ', 'BQ', 'CH', 'DH', 'EH', 'FQ', 'GQ', 'GQ', 'BQ', 'DH', 'BQ']);
+        });
+    });
+
+
+    it('Can detect music from random.txt', function() {
+        return readFile('./testcase/random.txt').then(function (bw) {
+            const { space, width, segments } = bw.readStd();
+            const notes = bw.getNotes(space, width);
+            const note = notes[2];
+            const img = bw.getNote(note.begin, note.end);
+            const score = img.tellNote(segments);
+            const isHalf = img.isHalf(segments);
+            assert.equal(score, 'E');
+            assert.isFalse(isHalf);
+        });
+    });
+
 });

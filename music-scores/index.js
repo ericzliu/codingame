@@ -1,4 +1,4 @@
-const { readRaw } = require('./inout');
+const { readRaw, writeToFile } = require('./inout');
 const fs = require('fs');
 
 function readFile(path) {
@@ -17,9 +17,18 @@ function readFile(path) {
     });
 }
 
-readFile('./testcase/random.txt').then(function (bw) {
-    const { space, width } = bw.readStd();
+function recognize(bw) {
+    const { space, width, segments } = bw.readStd();
     const notes = bw.getNotes(space, width);
-    console.log(notes);
-    console.log(notes.length);
-});
+    const scores = [];
+    for (let note of notes) {
+        const img = bw.getNote(note.begin, note.end);
+        const score = img.tellNote(segments);
+        const isHalf = img.isHalf(segments);
+        scores.push(score + (isHalf ? 'H' : 'Q'));
+    }
+    return scores;
+}
+
+module.exports.readRaw = readRaw;
+module.exports.recognize = recognize;
