@@ -1,4 +1,6 @@
 const stuff = require('./stuff');
+const fs = require('fs');
+const os = require('os');
 
 function parseImage(image, width, height) {
     const tokens = image.split(' ');
@@ -25,4 +27,16 @@ function readRaw(lines) {
     return new stuff.BWImage(pixels, width, height);
 }
 
+function writeToFile(bw, path) {
+    const lines = bw.encode();
+    fs.writeFile(path, lines.join(os.EOL), function(error) {
+        if (error) {
+            console.log(error);
+        } else {
+            console.log('The file was saved!');
+        }
+    });
+}
+
 module.exports.readRaw = readRaw;
+module.exports.writeToFile = writeToFile;
