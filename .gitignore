@@ -1,1 +1,3 @@
 */node_modules/
+/build-bridge-mingw530_32-Debug/**
+/bridge/CMakeLists.txt.user
