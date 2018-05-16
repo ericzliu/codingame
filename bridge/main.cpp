@@ -93,7 +93,11 @@ public:
     }
 
     bool isHole(int x, int y) {
-        return lanes[y][x] != '.';
+        if (x < this->width && y < this->height)
+            return lanes[y][x] != '.';
+        else {
+            return false;
+        }
     }
     
     string to_string() {
@@ -137,6 +141,22 @@ public:
     
     int count_live() {
         return count_if(begin(motors), end(motors), [](Motor & motor) -> bool { return motor.live; });
+    }
+    
+    string to_string() {
+        ostringstream str;
+        str << "state: {";
+        str << "speed:";
+        str << speed;
+        str << ',';
+        str << "motors:";
+        str << '[';
+        for (auto & motor : motors) {
+            str << '(' << motor.x << ',' << motor.y << ',';
+            str << ((motor.live == true) ? "true": "false") << "),";
+        }
+        str << "]}";
+        return str.str();
     }
 
 };
@@ -285,6 +305,9 @@ public:
         auto nState = make_shared<State>();
         nState->speed = state.speed;
         bool up = find_if(begin(state.motors), end(state.motors), [](Motor & motor) { return motor.y == 0; }) == end(state.motors);
+        if (!up) {
+            return shared_ptr<Node>();
+        }
         for (auto && motor : state.motors) {
             int x = motor.x + nState->speed;
             int y = up ? Vertical::up(motor.y): motor.y;
@@ -319,6 +342,9 @@ public:
         auto nState = make_shared<State>();
         nState->speed = state.speed;
         bool down = find_if(begin(state.motors), end(state.motors), [](Motor & motor) { return motor.y == 3; }) == end(state.motors);
+        if (!down) {
+            return shared_ptr<Node>();
+        }
         for (auto && motor : state.motors) {
             int x = motor.x + nState->speed;
             int y = down ? Vertical::down(motor.y): motor.y;
@@ -364,7 +390,7 @@ public:
         vector< shared_ptr<Node> > ans;
         for (auto & cmd: commands) {
             auto nNode = cmd->move(node);
-            if (nNode->state->count_live() >= min && nNode->state->speed > 0) {
+            if (nNode.get() != nullptr && nNode->state->count_live() >= min && nNode->state->speed > 0) {
                 ans.push_back(nNode);
             }
         }
@@ -466,6 +492,7 @@ int main()
                 state->motors.push_back(Motor(X, Y, A == 1));
             }
         }
+        cerr << state->to_string() << endl;
         auto node = make_shared<Node>(state);
         auto nodes = simulator.search(node, 5);
         COMMAND cmd = Judge::select(nodes);
