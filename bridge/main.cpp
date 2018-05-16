@@ -3,6 +3,7 @@
 #include <string>
 #include <memory>
 #include <algorithm>
+#include <sstream>
 using namespace std;
 
 enum COMMAND {
@@ -30,7 +31,7 @@ string to_string(COMMAND cmd) {
     case DOWN:
         return "DOWN";
     default:
-        return "";
+        return "NA";
     }
 }
 
@@ -73,12 +74,15 @@ int down(int y) {
 class Road {
 public:
     vector< vector< char > > lanes;
+    int height;
+    int width;
 
     Road(vector<string> & strs) {
-        int height = 4;
+        this->height = 4;
         int width = 0;
         for (; (strs[0][width] == '0' || strs[0][width] == '.') && width < strs[0].size(); ++width) {
         }
+        this->width = width;
         lanes = vector< vector< char > > (4, vector< char > (width));
         for (int i = 0; i < height; ++i) {
             string & str = strs[i];
@@ -89,7 +93,23 @@ public:
     }
 
     bool isHole(int x, int y) {
-        return lanes[y][x] == '0';
+        return lanes[y][x] != '.';
+    }
+    
+    string to_string() {
+        ostringstream str;
+        bool isFirst = true;
+        for (auto i = 0; i < height; i += 1) {
+            if (isFirst) {
+                isFirst = false;
+            } else {
+                str << '\n';
+            }
+            for (auto j = 0; j < width; j += 1) {
+                str << lanes[i][j];
+            }
+        }
+        return str.str();
     }
 };
 
@@ -114,6 +134,11 @@ public:
     State() {
         this->speed = 0;
     }
+    
+    int count_live() {
+        return count_if(begin(motors), end(motors), [](Motor & motor) -> bool { return motor.live; });
+    }
+
 };
 
 class Node {
@@ -165,7 +190,9 @@ public:
                     }
                 }
             }
-            nState->motors.push_back(Motor(x, y, live));
+            if (live) {
+                nState->motors.push_back(Motor(x, y, live));
+            }
         }
         return make_shared<Node>(nState, this->cmd, node);
     }
@@ -190,7 +217,10 @@ public:
                     }
                 }
             }
-            nState->motors.push_back(Motor(x, y, live));
+            
+            if (live) {
+                nState->motors.push_back(Motor(x, y, live));
+            }
         }
         return make_shared<Node>(nState, this->cmd, node);
     }
@@ -213,7 +243,9 @@ public:
                     live = false;
                 }
             }
-            nState->motors.push_back(Motor(x, y, live));
+            if (live) {
+                nState->motors.push_back(Motor(x, y, live));
+            }
         }
         return make_shared<Node>(nState, this->cmd, node);
     }
@@ -237,7 +269,9 @@ public:
                     }
                 }
             }
-            nState->motors.push_back(Motor(x, y, live));
+            if (live) {
+                nState->motors.push_back(Motor(x, y, live));
+            }
         }
         return make_shared<Node>(nState, this->cmd, node);
     }
@@ -248,7 +282,6 @@ public:
     COMMAND cmd = UP;
     shared_ptr<Node> move(shared_ptr<Node> & node) {
         auto & state = *(node->state);
-
         auto nState = make_shared<State>();
         nState->speed = state.speed;
         bool up = find_if(begin(state.motors), end(state.motors), [](Motor & motor) { return motor.y == 0; }) == end(state.motors);
@@ -270,7 +303,9 @@ public:
                     }
                 }
             }
-            nState->motors.push_back(Motor(x, y, live));
+            if (live) {
+                nState->motors.push_back(Motor(x, y, live));
+            }
         }
         return make_shared<Node>(nState, this->cmd, node);
     }
@@ -281,7 +316,6 @@ public:
     COMMAND cmd = DOWN;
     shared_ptr<Node> move(shared_ptr<Node> & node) {
         auto & state = *(node->state);
-
         auto nState = make_shared<State>();
         nState->speed = state.speed;
         bool down = find_if(begin(state.motors), end(state.motors), [](Motor & motor) { return motor.y == 3; }) == end(state.motors);
@@ -303,7 +337,9 @@ public:
                     }
                 }
             }
-            nState->motors.push_back(Motor(x, y, live));
+            if (live) {
+                nState->motors.push_back(Motor(x, y, live));
+            }
         }
         return make_shared<Node>(nState, this->cmd, node);
     }
@@ -328,7 +364,7 @@ public:
         vector< shared_ptr<Node> > ans;
         for (auto & cmd: commands) {
             auto nNode = cmd->move(node);
-            if (nNode->state->motors.size() >= min) {
+            if (nNode->state->count_live() >= min && nNode->state->speed > 0) {
                 ans.push_back(nNode);
             }
         }
@@ -351,18 +387,12 @@ public:
 
     vector< shared_ptr< Node > > search(shared_ptr< Node > current, int level, int max_level) {
         vector< shared_ptr< Node > > ans;
-        if (level >= max_level) {
-            /**
-              * Only used when max_level is set to <= 0
-              */
-            return ans;
-        }
         auto states = this->commands->move(current);
         for (auto state: states) {
             if (level == max_level) {
                 ans.push_back(state);
             } else {
-                auto child_ans = search(state, level + 1);
+                auto child_ans = search(state, level + 1, max_level);
                 copy(begin(child_ans), end(child_ans), back_inserter(ans));
             }
         }
@@ -372,30 +402,6 @@ public:
 
 namespace Judge
 {
-double score(State& state) {
-    /**
-      * There are two factors: number of live motors and speed
-      */
-    auto n_live = count_if(begin(state.motors), end(state.motors), [](Motor& motor) { return motor.live; });
-    return n_live;
-}
-
-vector< shared_ptr< Node > > max_nodes(vector< shared_ptr< Node > >& nodes) {
-    vector< shared_ptr< Node > > ans;
-    double max_score = 0.0;
-    for (auto node: nodes) {
-        auto note = score(*(node->state));
-        if (note > max_score) {
-            max_score = note;
-            ans.clear();
-            ans.push_back(node);
-        } else if (note == max_score) {
-            ans.push_back(node);
-        }
-    }
-    return ans;
-}
-
 COMMAND get_first_command(shared_ptr<Node> & node) {
     COMMAND cmd = NA;
     while (node->cmd != NA) {
@@ -405,19 +411,24 @@ COMMAND get_first_command(shared_ptr<Node> & node) {
     return cmd;
 }
 
-COMMAND get_best_command(vector< shared_ptr< Node > >& nodes) {
-    vector<int> counters(7, 0);
-    for (auto& node : nodes) {
-        counters[get_first_command(node)]++;
-    }
-    auto m = max_element(begin(counters), end(counters));
-    auto index = distance(begin(counters), m);
-    index;
-}
-
 COMMAND select(vector< shared_ptr< Node > >& nodes) {
-    auto m_nodes = max_nodes(nodes);
-    return get_best_command(m_nodes);
+    sort(begin(nodes), end(nodes), [](shared_ptr< Node >& left, shared_ptr< Node >& right) -> bool {
+        State & lstate = *(left->state);
+        State & rstate = *(right->state);
+        if (lstate.speed < rstate.speed) {
+            return true;
+        } else if (lstate.speed > rstate.speed) {
+            return false;
+        }
+        
+        auto llive = lstate.count_live();
+        auto rlive = rstate.count_live();
+        if (llive < rlive) {
+            return true;
+        }
+        return false;
+    });
+    return get_first_command(nodes[nodes.size() - 1]);
 }
 
 }
@@ -438,6 +449,7 @@ int main()
     cin >> L3; cin.ignore();
     vector< string > strs = { L0, L1, L2, L3 };
     Road road(strs);
+    cerr << road.to_string() << endl;
     Simulator simulator(&road, V);
     // game loop
     while (1) {
@@ -450,10 +462,12 @@ int main()
             int Y; // y coordinate of the motorbike
             int A; // indicates whether the motorbike is activated "1" or detroyed "0"
             cin >> X >> Y >> A; cin.ignore();
-            state->motors.push_back(Motor(X, Y, A == '1'));
+            if (A == 1) {
+                state->motors.push_back(Motor(X, Y, A == 1));
+            }
         }
         auto node = make_shared<Node>(state);
-        auto nodes = simulator.search(node, 3);
+        auto nodes = simulator.search(node, 5);
         COMMAND cmd = Judge::select(nodes);
         // Write an action using cout. DON'T FORGET THE "<< endl"
         // To debug: cerr << "Debug messages..." << endl;
