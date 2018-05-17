@@ -4,6 +4,8 @@
 #include <algorithm>
 #include <memory>
 #include <sstream>
+#include <queue>
+#include <functional>
 
 using namespace std;
 
@@ -82,6 +84,12 @@ struct Motor {
         activated = false;
     }
 
+    Motor(int x, int y, bool activated) {
+        this->x = x;
+        this->y = y;
+        this->activated = activated;
+    }
+
     Motor change_x(int x) {
         Motor after = *this;
         after.x = x;
@@ -127,6 +135,17 @@ struct State {
         }
         ostr << "]}";
         return ostr.str();
+    }
+
+    bool is_empty() {
+        return motors.empty();
+    }
+
+    int x() {
+        if (is_empty()) {
+            return 0;
+        }
+        return motors[0].x;
     }
 };
 
@@ -379,6 +398,11 @@ BaseCommandRef jump() {
     return unique_ptr<BaseCommand>(new Jump());
 }
 
+
+BaseCommandRef speed() {
+    return unique_ptr<BaseCommand>(new Speed());
+}
+
 BaseCommandRef slow() {
     return unique_ptr<BaseCommand>(new Slow());
 }
@@ -395,9 +419,53 @@ BaseCommandRef up() {
     return unique_ptr<BaseCommand>(new Up());
 }
 
+struct FurthestFirst : public less<NodeRef> {
+    bool operator()(const NodeRef& x, const NodeRef& y) const {
+        if (x->state->motors[0].y > y->state->motors[0].y) {
+            return true;
+        }
+        return false;
+    }
+};
+
+bool same_motors(const NodeRef& x, const NodeRef& y) {
+    auto & x_motors = x->state->motors;
+    auto & y_motors = y->state->motors;
+    if (x_motors.size() == y_motors.size()) {
+        for (auto& x_motor: x_motors) {
+            bool matched = false;
+            for (auto& y_motor: y_motors) {
+                if (x_motor.x == y_motor.x && x_motor.y == y_motor.y && x_motor.activated == y_motor.activated) {
+                    matched = true;
+                    break;
+                }
+            }
+            if (!matched) {
+                return false;
+            }
+        }
+        return true;
+    }
+    return false;
+}
+
 struct Simulator {
 
     vector< BaseCommandRef > commands;
+
+    void init(int min_live, Road* road) {
+        commands.push_back(jump());
+        commands.push_back(wait());
+        commands.push_back(slow());
+        commands.push_back(speed());
+        commands.push_back(up());
+        commands.push_back(down());
+        for (auto& command: commands) {
+            command->min_live = min_live;
+            command->road = road;
+        }
+    }
+
     vector< NodeRef > get_children(NodeRef & parent) {
         vector< NodeRef > children;
         for (auto& command : commands) {
@@ -432,6 +500,49 @@ struct Simulator {
         ostr << node->to_string();
         return ostr.str();
     }
+
+    NodeRef search_furthest(NodeRef& root, int total, int dest_x) {
+        priority_queue<NodeRef, vector<NodeRef>, FurthestFirst> search_queue;
+        if (root->state->is_empty()) {
+            return root;
+        }
+        search_queue.push(root);
+        int num = 0;
+        NodeRef best = root;
+        while (!search_queue.empty()) {
+            auto furthest = search_queue.top();
+            search_queue.pop();
+            auto children = get_children(furthest);
+            vector<NodeRef> unique_children;
+            for (auto& child : children) {
+                num++;
+                if (child->state->x() > best->state->x()) {
+                    best = child;
+                }
+
+                if (num >= total) {
+                    return best;
+                }
+
+                if (child->state->x() >= dest_x) {
+                    return child;
+                }
+
+                bool already_added = false;
+                for (auto & kid: unique_children) {
+                    if (same_motors(kid, child)) {
+                        already_added = true;
+                        break;
+                    }
+                }
+                if (!already_added) {
+                    unique_children.push_back(child);
+                    search_queue.push(child);
+                }
+            }
+        }
+        return best;
+    }
 };
 
 /**
@@ -453,15 +564,48 @@ int main()
     string L3;
     cin >> L3; cin.ignore();
 
+    vector<string> lanes = { L0, L1, L2, L3 };
+    Road road(lanes);
+    cerr << road.to_string() << endl;
+
+
+    Simulator simulator;
+    simulator.init(V, &road);
+
+    int counter = 2;
     // game loop
     while (1) {
         int S; // the motorbikes' speed
         cin >> S; cin.ignore();
+
+        auto state = state_ref();
+        state->speed = S;
+
         for (int i = 0; i < M; i++) {
             int X; // x coordinate of the motorbike
             int Y; // y coordinate of the motorbike
             int A; // indicates whether the motorbike is activated "1" or detroyed "0"
             cin >> X >> Y >> A; cin.ignore();
+            if (A == 1) {
+                Motor m(X, Y, true);
+                state->motors.push_back(m);
+            }
+        }
+
+        cerr << state->to_string() << endl;
+
+        if (counter-- > 0) {
+
+            auto root = root_node(state);
+            auto children = simulator.get_children(root);
+
+            for (auto& child: children) {
+                cerr << child->to_string() << endl;
+            }
+        }
+
+        if (counter <= 0) {
+            break;
         }
 
         // Write an action using cout. DON'T FORGET THE "<< endl"
