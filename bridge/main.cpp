@@ -6,6 +6,7 @@
 #include <sstream>
 #include <queue>
 #include <functional>
+#include <unordered_set>
 
 using namespace std;
 
@@ -262,7 +263,9 @@ typedef unique_ptr<BaseCommand> BaseCommandRef;
 class Jump : public BaseCommand {
 
     virtual Motor apply(int speed, Motor& motor) {
-        return motor.change_x(motor.x + speed);
+        auto after = motor.change_x(motor.x + speed);
+        after.activated = test(speed, motor);
+        return after;
     }
 
     virtual bool test(int speed, Motor& motor) {
@@ -280,7 +283,9 @@ class Jump : public BaseCommand {
 
 class Speed : public BaseCommand {
     virtual Motor apply(int speed, Motor& motor) {
-        return motor.change_x(motor.x + speed);
+        auto after = motor.change_x(motor.x + speed);
+        after.activated = test(speed, motor);
+        return after;
     }
 
     virtual bool test(int speed, Motor& motor) {
@@ -298,7 +303,9 @@ class Speed : public BaseCommand {
 
 class Slow : public BaseCommand {
     virtual Motor apply(int speed, Motor& motor) {
-        return motor.change_x(motor.x + speed);
+        auto after = motor.change_x(motor.x + speed);
+        after.activated = test(speed, motor);
+        return after;
     }
 
     virtual bool test(int speed, Motor& motor) {
@@ -316,7 +323,9 @@ class Slow : public BaseCommand {
 
 class Wait : public BaseCommand {
     virtual Motor apply(int speed, Motor& motor) {
-        return motor.change_x(motor.x + speed);
+        auto after = motor.change_x(motor.x + speed);
+        after.activated = test(speed, motor);
+        return after;
     }
 
     virtual bool test(int speed, Motor& motor) {
@@ -334,7 +343,10 @@ class Wait : public BaseCommand {
 
 class Up : public BaseCommand {
     virtual Motor apply(int speed, Motor& motor) {
-        return motor.change_y(motor.y - 1);
+        auto after = motor.change_y(motor.y - 1);
+        after = after.change_x(motor.x + speed);
+        after.activated = test(speed, motor);
+        return after;
     }
 
     virtual bool test(int speed, Motor& motor) {
@@ -365,7 +377,10 @@ class Up : public BaseCommand {
 
 class Down : public BaseCommand {
     virtual Motor apply(int speed, Motor& motor) {
-        return motor.change_y(motor.y + 1);
+        auto after = motor.change_y(motor.y + 1);
+        after = after.change_x(motor.x + speed);
+        after.activated = test(speed, motor);
+        return after;
     }
 
     virtual bool test(int speed, Motor& motor) {
@@ -387,9 +402,11 @@ class Down : public BaseCommand {
         auto & motors = node->state->motors;
         for (auto & motor : motors) {
             if (motor.activated && motor.y == (get_road().height - 1)) {
+                // cerr << "feasible = false" << endl;
                 return false;
             }
         }
+        // cerr << "feasible = true" << endl;
         return true;
     }
 };
@@ -419,14 +436,15 @@ BaseCommandRef up() {
     return unique_ptr<BaseCommand>(new Up());
 }
 
-struct FurthestFirst : public less<NodeRef> {
+struct FurthestFirst {
     bool operator()(const NodeRef& x, const NodeRef& y) const {
-        if (x->state->motors[0].y > y->state->motors[0].y) {
-            return true;
-        }
-        return false;
+        return (x->state->motors[0].x < y->state->motors[0].x);
     }
 };
+
+bool same_speed(const NodeRef& x, const NodeRef& y) {
+    return x->state->speed == y->state->speed;
+}
 
 bool same_motors(const NodeRef& x, const NodeRef& y) {
     auto & x_motors = x->state->motors;
@@ -449,13 +467,36 @@ bool same_motors(const NodeRef& x, const NodeRef& y) {
     return false;
 }
 
+bool same_state(const NodeRef& x, const NodeRef& y) {
+    return same_speed(x, y) && same_motors(x, y);
+}
+
+struct NodeRefHasher {
+    size_t operator()(NodeRef const& node) const {
+        size_t res = 17;
+        res = res * 31 + hash<int>()(node->state->speed);
+        res = res * 31 + hash<size_t>()(node->state->motors.size());
+        for (auto& motor : node->state->motors) {
+            res = res * 31 + hash<int>()(motor.x);
+            res = res * 31 + hash<int>()(motor.y);
+        }
+        return res;
+    }
+};
+
+struct NodeRefEq {
+    size_t operator()(NodeRef const& x, NodeRef const& y) const {
+        return same_state(x, y);
+    }
+};
+
 struct Simulator {
 
     vector< BaseCommandRef > commands;
 
     void init(int min_live, Road* road) {
-        commands.push_back(jump());
         commands.push_back(wait());
+        commands.push_back(jump());
         commands.push_back(slow());
         commands.push_back(speed());
         commands.push_back(up());
@@ -490,6 +531,7 @@ struct Simulator {
                 ostr << "<--";
             }
             ostr << node->to_string();
+            node = node->parent;
         }
 
         if (first) {
@@ -501,44 +543,56 @@ struct Simulator {
         return ostr.str();
     }
 
+    const char* get_first_command(NodeRef node) {
+        const char* command = Command::WAIT;
+        while (!is_root_node(node)) {
+            command = node->cmd;
+            node = node->parent;
+        }
+        return command;
+    }
+
+    /**
+     * @brief search_furthest
+     * @param root starting node
+     * @param total maximum number of explored node
+     * @param dest_x target x
+     * @return furthest node found within the constraint of total and dest_x
+     */
     NodeRef search_furthest(NodeRef& root, int total, int dest_x) {
         priority_queue<NodeRef, vector<NodeRef>, FurthestFirst> search_queue;
+        unordered_set<NodeRef, NodeRefHasher, NodeRefEq> discovered_nodes;
         if (root->state->is_empty()) {
             return root;
         }
         search_queue.push(root);
+        // cerr << "in: " << root->to_string() << endl;
         int num = 0;
         NodeRef best = root;
         while (!search_queue.empty()) {
             auto furthest = search_queue.top();
             search_queue.pop();
+            // cerr << "out: " << furthest->to_string() << endl;
             auto children = get_children(furthest);
-            vector<NodeRef> unique_children;
             for (auto& child : children) {
-                num++;
-                if (child->state->x() > best->state->x()) {
-                    best = child;
-                }
+                // cerr << "child: " << child->to_string() << endl;
+                if (discovered_nodes.count(child) == 0) {
+                    discovered_nodes.insert(child);
+                    num++;
+                    if (num < total) {
+                        if (child->state->x() > best->state->x()) {
+                            best = child;
+                        }
 
-                if (num >= total) {
-                    return best;
-                }
+                        if (child->state->x() >= dest_x) {
+                            return child;
+                        }
 
-                if (child->state->x() >= dest_x) {
-                    return child;
-                }
-
-                bool already_added = false;
-                for (auto & kid: unique_children) {
-                    if (same_motors(kid, child)) {
-                        already_added = true;
-                        break;
+                        search_queue.push(child);
+                        // cerr << "in: " << child->to_string() << endl;
                     }
                 }
-                if (!already_added) {
-                    unique_children.push_back(child);
-                    search_queue.push(child);
-                }
+
             }
         }
         return best;
@@ -593,26 +647,16 @@ int main()
         }
 
         cerr << state->to_string() << endl;
-
-        if (counter-- > 0) {
-
-            auto root = root_node(state);
-            auto children = simulator.get_children(root);
-
-            for (auto& child: children) {
-                cerr << child->to_string() << endl;
-            }
-        }
-
-        if (counter <= 0) {
-            break;
-        }
+        auto root = root_node(state);
+        auto node = simulator.search_furthest(root, 1000, 65);
+        cerr << "search result: " << node->to_string() << endl;
+        cerr << simulator.to_decisions_debug_info(node) << endl;
 
         // Write an action using cout. DON'T FORGET THE "<< endl"
         // To debug: cerr << "Debug messages..." << endl;
 
 
         // A single line containing one of 6 keywords: SPEED, SLOW, JUMP, WAIT, UP, DOWN.
-        cout << "SPEED" << endl;
+        cout << simulator.get_first_command(node) << endl;
     }
 }
