@@ -192,8 +192,10 @@ def find_path(maze, src, dest, alarm):
 r, c, a = [int(i) for i in input().split()]
 
 maze = Maze(r, c)
-old_pos = set()
+visited = set()
 curr = None # the search leaf node before control room is known
+is_first = True
+traversed = False
 is_go = True
 path_go = None
 path_back = None
@@ -204,38 +206,41 @@ while True:
     for i in range(r):
         row = input()
         maze.update_row(i, row)
+    # traverse the map using backtracing
+    if is_first:
+        curr = Node(input_pos)
+        is_first = False
     
-    # print(input_pos, file=sys.stderr)
-    if is_go and maze.is_control_room_seen() and path_go is None:
-        path_go = find_path(maze, input_pos, maze.control_room, math.inf)
-        print(path_go, file=sys.stderr)
-
-    if (is_go and path_go is not None) or (not is_go):
-        if is_go and input_pos == maze.control_room:
-            is_go = False
-        if not is_go and path_back is None:
-            path_back = find_path(maze, maze.control_room, maze.starting_point, a)
-            print(path_back, file=sys.stderr)
-
-        path = path_go if is_go else path_back
-        print(get_direction(input_pos, path[path.index(input_pos) + 1]))
-    else:
-        # before seeing the control room, discover the map using dfs and backtracing
-        if curr is None:
-            curr = Node(input_pos)
-        old_pos.add(input_pos)
-
-        lst_child = all_neighbors(input_pos, maze, old_pos)
-        if len(lst_child) > 0:
-            dst = next((x for x in lst_child if maze.is_control_room(x)), lst_child[0])
+    if not traversed:
+        visited.add(input_pos)
+        lst_child = all_neighbors(input_pos, maze, visited)
+        dst = next((x for x in lst_child if not maze.is_control_room(x)), None)
+        if dst is not None:
             # print(dst, file=sys.stderr)
             direction = get_direction(input_pos, dst)
+            print(direction)
             parent = curr
             child = Node(dst)
             child.parent = parent
             curr = child
         else:
             # go back to parent
-            direction = get_direction(input_pos, curr.parent.position)
-            curr = curr.parent
-        print(direction)
+            if curr.parent is None:
+                traversed = True # finished traversing map, back to the beginning
+            else:
+                direction = get_direction(input_pos, curr.parent.position)
+                print(direction)
+                curr = curr.parent
+    
+    if traversed:
+        if input_pos == maze.control_room:
+            is_go = False
+        if is_go and path_go is None:
+            path_go = find_path(maze, input_pos, maze.control_room, a)
+            print(path_go, file=sys.stderr)
+        if not is_go and path_back is None:
+            path_back = find_path(maze, maze.control_room, maze.starting_point, a)
+            print(path_back, file=sys.stderr)
+        path = path_go if is_go else path_back
+        print(get_direction(input_pos, path[path.index(input_pos) + 1]))
+
